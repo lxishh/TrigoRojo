@@ -116,6 +116,23 @@
         </div>
       </div>
 
+    <form method="get" class="mb-4">
+      <div class="row justify-content-center">
+        <div class="col-12 col-md-3">
+          <label for="inicio">Desde:</label>
+          <input type="date" name="inicio" id="inicio" class="form-control" value="{{ fecha_inicio }}">
+        </div>
+        <div class="col-12 col-md-3">
+          <label for="fin">Hasta:</label>
+          <input type="date" name="fin" id="fin" class="form-control" value="{{ fecha_fin }}">
+        </div>
+        <div class="col-12 col-md-2 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+        </div>
+      </div>
+    </form>
+
+ 
     <!-- Fila 1: 2 tarjetas arriba -->
     <div class="row justify-content-center mb-4">
       <div class="col-12 col-md-6 col-lg-3 mb-4">

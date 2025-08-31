@@ -11,6 +11,8 @@ from django.db.models.functions import TruncDay, TruncWeek, TruncMonth
 from django.contrib.auth.decorators import login_required
 from usuarios.utils import rol_requerido
 
+from datetime import datetime
+
 
 def agregar_venta(request):
     DetalleVentaFormSet = modelformset_factory(
@@ -106,53 +108,52 @@ locale.setlocale(locale.LC_TIME, 'Spanish_Spain.1252')
 @login_required
 @rol_requerido('Propietaria')
 def ingresos(request):
+    # Obtener fechas desde el formulario
+    fecha_inicio = request.GET.get('inicio')
+    fecha_fin = request.GET.get('fin')
+
+    # Base de datos filtrada o completa
+    ventas_filtradas = Venta.objects.all()
+    if fecha_inicio and fecha_fin:
+        try:
+            fecha_inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+            fecha_fin = datetime.strptime(fecha_fin, '%Y-%m-%d')
+            ventas_filtradas = ventas_filtradas.filter(fecha__range=[fecha_inicio, fecha_fin])
+        except ValueError:
+            pass  # Manejo de error si las fechas no son válidas
+
     # Ingresos totales por día
-    ingresos_dia = Venta.objects.annotate(dia=TruncDay(
-        'fecha')).values('dia').annotate(total=Sum('total'))
+    ingresos_dia = ventas_filtradas.annotate(dia=TruncDay('fecha')).values('dia').annotate(total=Sum('total'))
 
     # Ingresos totales por semana
-    ingresos_semana = Venta.objects.annotate(semana=TruncWeek(
-        'fecha')).values('semana').annotate(total=Sum('total'))
+    ingresos_semana = ventas_filtradas.annotate(semana=TruncWeek('fecha')).values('semana').annotate(total=Sum('total'))
 
     # Ingresos totales por mes
-    ingresos_mes = Venta.objects.annotate(mes=TruncMonth(
-        'fecha')).values('mes').annotate(total=Sum('total'))
+    ingresos_mes = ventas_filtradas.annotate(mes=TruncMonth('fecha')).values('mes').annotate(total=Sum('total'))
 
     # Total general
-    total_general = Venta.objects.aggregate(total=Sum('total'))['total']
+    total_general = ventas_filtradas.aggregate(total=Sum('total'))['total']
 
-    # Redondear los valores a enteros
+    # Redondear y formatear fechas
     for ingreso in ingresos_dia:
         ingreso['total'] = round(ingreso['total'])
+        ingreso['dia'] = ingreso['dia'].strftime('%d %b %Y').capitalize()
 
     for ingreso in ingresos_semana:
         ingreso['total'] = round(ingreso['total'])
-
-    for ingreso in ingresos_mes:
-        ingreso['total'] = round(ingreso['total'])
-
-    # Formatear las fechas antes de pasar al template
-    for ingreso in ingresos_dia:
-        ingreso['dia'] = ingreso['dia'].strftime(
-            '%d %b %Y').capitalize()  # Día en formato '28 Nov 2024'
-
-    for ingreso in ingresos_semana:
-        semana = ingreso['semana'].strftime(
-            '%W, %Y')  # Semana en formato '48, 2024'
-        # Semana 48 2024
+        semana = ingreso['semana'].strftime('%W, %Y')
         ingreso['semana'] = f"Semana {semana.split(',')[0]} de {semana.split(',')[1]}"
 
     for ingreso in ingresos_mes:
-        # Mes en formato 'Noviembre 2024'
-        mes = ingreso['mes'].strftime('%B %Y')
-        # Asegurarse de que el mes comience con mayúscula
-        ingreso['mes'] = mes.capitalize()
+        ingreso['total'] = round(ingreso['total'])
+        ingreso['mes'] = ingreso['mes'].strftime('%B %Y').capitalize()
 
-    # Pasar los datos al template
     context = {
         'ingresos_dia': ingresos_dia,
         'ingresos_semana': ingresos_semana,
         'ingresos_mes': ingresos_mes,
         'total_general': total_general,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
     }
     return render(request, 'ingresos.html', context)
