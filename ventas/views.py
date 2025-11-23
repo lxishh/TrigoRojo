@@ -161,9 +161,9 @@ def ingresos(request):
         writer.writerow([]) # Fila vacía para separación
         
         # Escribir Ingresos por Día
-        writer.writerow(['INGRESOS POR DÍA', '', ''])
+        writer.writerow(['INGRESOS POR DIA', '', ''])
         for ingreso in ingresos_dia:
-            writer.writerow(['Día', ingreso['dia_str'], ingreso['total']])
+            writer.writerow(['Dia', ingreso['dia_str'], ingreso['total']])
         
         writer.writerow([])
         
