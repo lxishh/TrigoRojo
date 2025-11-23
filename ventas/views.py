@@ -13,6 +13,9 @@ from usuarios.utils import rol_requerido
 
 from datetime import datetime
 
+import csv
+from django.http import HttpResponse
+
 
 def agregar_venta(request):
     DetalleVentaFormSet = modelformset_factory(
@@ -111,49 +114,125 @@ def ingresos(request):
     # Obtener fechas desde el formulario
     fecha_inicio = request.GET.get('inicio')
     fecha_fin = request.GET.get('fin')
+    exportar = request.GET.get('exportar') # 👈 Capturamos el parámetro de exportación
 
-    # Base de datos filtrada o completa
+    # Base de datos filtrada o completa (tu lógica actual)
     ventas_filtradas = Venta.objects.all()
     if fecha_inicio and fecha_fin:
         try:
+            # ... (tu lógica de parseo de fechas) ...
             fecha_inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d')
             fecha_fin = datetime.strptime(fecha_fin, '%Y-%m-%d')
             ventas_filtradas = ventas_filtradas.filter(fecha__range=[fecha_inicio, fecha_fin])
         except ValueError:
-            pass  # Manejo de error si las fechas no son válidas
+            pass 
 
-    # Ingresos totales por día
+    # Ingresos totales por día, semana, mes (tu lógica actual)
     ingresos_dia = ventas_filtradas.annotate(dia=TruncDay('fecha')).values('dia').annotate(total=Sum('total'))
-
-    # Ingresos totales por semana
     ingresos_semana = ventas_filtradas.annotate(semana=TruncWeek('fecha')).values('semana').annotate(total=Sum('total'))
-
-    # Ingresos totales por mes
     ingresos_mes = ventas_filtradas.annotate(mes=TruncMonth('fecha')).values('mes').annotate(total=Sum('total'))
-
-    # Total general
     total_general = ventas_filtradas.aggregate(total=Sum('total'))['total']
 
-    # Redondear y formatear fechas
+    # Redondear y formatear fechas (tu lógica actual)
     for ingreso in ingresos_dia:
         ingreso['total'] = round(ingreso['total'])
-        ingreso['dia'] = ingreso['dia'].strftime('%d %b %Y').capitalize()
+        ingreso['dia_str'] = ingreso['dia'].strftime('%d %b %Y').capitalize() # Guardamos la versión formateada
 
     for ingreso in ingresos_semana:
         ingreso['total'] = round(ingreso['total'])
         semana = ingreso['semana'].strftime('%W, %Y')
-        ingreso['semana'] = f"Semana {semana.split(',')[0]} de {semana.split(',')[1]}"
+        ingreso['semana_str'] = f"Semana {semana.split(',')[0]} de {semana.split(',')[1]}" # Guardamos la versión formateada
 
     for ingreso in ingresos_mes:
         ingreso['total'] = round(ingreso['total'])
-        ingreso['mes'] = ingreso['mes'].strftime('%B %Y').capitalize()
+        ingreso['mes_str'] = ingreso['mes'].strftime('%B %Y').capitalize() # Guardamos la versión formateada
 
+    # 🛑 LÓGICA DE EXPORTACIÓN 🛑
+    if exportar == 'csv':
+        response = HttpResponse(content_type='text/csv')
+        # Define el nombre del archivo
+        response['Content-Disposition'] = f'attachment; filename="reporte_ingresos_{datetime.now().strftime("%Y%m%d")}.csv"'
+        
+        writer = csv.writer(response)
+        
+        # Escribir encabezados
+        writer.writerow(['Tipo de Reporte', 'Periodo', 'Total Ingresos'])
+        writer.writerow(['Total General', 'Todas las Fechas', total_general or 0])
+        writer.writerow([]) # Fila vacía para separación
+        
+        # Escribir Ingresos por Día
+        writer.writerow(['INGRESOS POR DÍA', '', ''])
+        for ingreso in ingresos_dia:
+            writer.writerow(['Día', ingreso['dia_str'], ingreso['total']])
+        
+        writer.writerow([])
+        
+        # Escribir Ingresos por Semana
+        writer.writerow(['INGRESOS POR SEMANA', '', ''])
+        for ingreso in ingresos_semana:
+            writer.writerow(['Semana', ingreso['semana_str'], ingreso['total']])
+            
+        writer.writerow([])
+        
+        # Escribir Ingresos por Mes
+        writer.writerow(['INGRESOS POR MES', '', ''])
+        for ingreso in ingresos_mes:
+            writer.writerow(['Mes', ingreso['mes_str'], ingreso['total']])
+        
+        return response
+
+    # 🛑 LÓGICA DE RENDERIZACIÓN HTML (Si no hay exportar) 🛑
     context = {
-        'ingresos_dia': ingresos_dia,
-        'ingresos_semana': ingresos_semana,
-        'ingresos_mes': ingresos_mes,
+        # Usamos las versiones formateadas para el HTML
+        'ingresos_dia': [{'dia': i['dia_str'], 'total': i['total']} for i in ingresos_dia],
+        'ingresos_semana': [{'semana': i['semana_str'], 'total': i['total']} for i in ingresos_semana],
+        'ingresos_mes': [{'mes': i['mes_str'], 'total': i['total']} for i in ingresos_mes],
         'total_general': total_general,
         'fecha_inicio': fecha_inicio,
         'fecha_fin': fecha_fin,
     }
     return render(request, 'ingresos.html', context)
+
+@login_required
+@rol_requerido('Propietaria')
+def exportar_ventas_analisis(request):
+    # 1. Preparar la respuesta HTTP para el archivo
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="ventas_transaccionales_{datetime.now().strftime("%Y%m%d")}.csv"'
+    
+    writer = csv.writer(response)
+    
+    # 2. Obtener los datos (Ventas completas, no solo los totales agrupados)
+    ventas = Venta.objects.all().order_by('fecha')
+    
+    # Aplicar el filtro de fechas si existe (tomando los mismos parámetros de 'ingresos')
+    fecha_inicio = request.GET.get('inicio')
+    fecha_fin = request.GET.get('fin')
+    if fecha_inicio and fecha_fin:
+        try:
+            fecha_inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+            fecha_fin = datetime.strptime(fecha_fin, '%Y-%m-%d')
+            ventas = ventas.filter(fecha__range=[fecha_inicio, fecha_fin])
+        except ValueError:
+            pass 
+
+    # 3. Escribir encabezados
+    writer.writerow([
+        'ID_Venta', 
+        'Vendedor_ID', 
+        'Vendedor_Nombre', 
+        'Fecha_Completa', 
+        'Total_Venta'
+    ])
+    
+    # 4. Escribir los datos de cada fila
+    for venta in ventas:
+        writer.writerow([
+            venta.id, 
+            venta.vendedor.id, 
+            venta.vendedor.usuario.username, # Ajusta según cómo obtienes el nombre del usuario
+            venta.fecha.strftime('%Y-%m-%d %H:%M:%S'), 
+            venta.total
+        ])
+    
+    return response

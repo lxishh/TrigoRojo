@@ -129,8 +129,21 @@
         <div class="col-12 col-md-2 d-flex align-items-end">
           <button type="submit" class="btn btn-primary w-100">Filtrar</button>
         </div>
+        <div class="col-12 col-md-2 d-flex align-items-end">
+            <button type="submit" name="exportar" value="csv" class="btn btn-success w-100">
+                <i class="fas fa-file-excel me-1"></i> Exportar
+            </button>
+        </div>
+        <div class="col-12 col-md-2 d-flex align-items-end">
+            <a href="{% url 'exportar_analisis' %}?inicio={{ fecha_inicio|date:'Y-m-d' }}&fin={{ fecha_fin|date:'Y-m-d' }}" 
+              class="btn btn-dark w-100">
+                <i class="fas fa-database me-1"></i> Exportar Data Limpia
+            </a>
+        </div>
       </div>
     </form>
+
+    
 
  
     <!-- Fila 1: 2 tarjetas arriba -->
