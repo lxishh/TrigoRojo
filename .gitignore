@@ -1,0 +1,20 @@
+# 1. Directorios y Archivos de Entorno Virtual y Cache
+venv/
+env/
+__pycache__/
+*.pyc
+*.log
+
+# 2. Archivos Sensibles y Locales (¡CRUCIALES!)
+.env
+db.sqlite3
+*.sqlite3
+
+# 3. Archivos de Editor de Código y OS
+.DS_Store
+.vscode/
+.idea/
+Thumbs.db
+
+# 4. Archivos de compilación de Django/Python
+# (Los archivos que terminan en .pyc o que ves en la carpeta __pycache__)
