@@ -24,7 +24,7 @@
 
     <!-- Opciones -->
     <div class="d-flex flex-column align-items-center">
-      {% if user.usuario.rol == 'Propietaria' %}
+      {% if user.is_superuser or user.usuario.rol == 'Propietaria' %}
       <a
         href="{% url 'productos' %}"
         class="btn btn-dark text-center w-50 mb-3 py-3 rounded-pill"
