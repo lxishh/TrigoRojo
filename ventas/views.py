@@ -196,43 +196,62 @@ def ingresos(request):
 @login_required
 @rol_requerido('Propietaria')
 def exportar_ventas_analisis(request):
-    # 1. Preparar la respuesta HTTP para el archivo
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename="ventas_transaccionales_{datetime.now().strftime("%Y%m%d")}.csv"'
-    
-    writer = csv.writer(response)
-    
-    # 2. Obtener los datos (Ventas completas, no solo los totales agrupados)
+    from datetime import datetime
+    import csv
+    from django.http import HttpResponse
+
+    # Respuesta optimizada para Excel
+    response = HttpResponse(
+        content_type='text/csv; charset=utf-8-sig'
+    )
+    response['Content-Disposition'] = f'attachment; filename="ventas_detalladas_{datetime.now().strftime("%Y%m%d")}.csv"'
+
+    writer = csv.writer(response, delimiter=';', quoting=csv.QUOTE_MINIMAL)
+
+    # Encabezados profesionales
+    writer.writerow([
+        'ID_Venta',
+        'Vendedor',
+        'Fecha',
+        'Hora',
+        'Año',
+        'Mes',
+        'Dia_Semana',
+        'Producto',
+        'Cantidad',
+        'Precio_Unitario',
+        'Subtotal'
+    ])
+
+    # Obtener ventas (con filtro opcional)
     ventas = Venta.objects.all().order_by('fecha')
-    
-    # Aplicar el filtro de fechas si existe (tomando los mismos parámetros de 'ingresos')
+
     fecha_inicio = request.GET.get('inicio')
     fecha_fin = request.GET.get('fin')
+
     if fecha_inicio and fecha_fin:
         try:
             fecha_inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d')
             fecha_fin = datetime.strptime(fecha_fin, '%Y-%m-%d')
             ventas = ventas.filter(fecha__range=[fecha_inicio, fecha_fin])
         except ValueError:
-            pass 
+            pass
 
-    # 3. Escribir encabezados
-    writer.writerow([
-        'ID_Venta', 
-        'Vendedor_ID', 
-        'Vendedor_Nombre', 
-        'Fecha_Completa', 
-        'Total_Venta'
-    ])
-    
-    # 4. Escribir los datos de cada fila
+    # Recorrer cada venta y detalle (data transaccional real)
     for venta in ventas:
-        writer.writerow([
-            venta.id, 
-            venta.vendedor.id, 
-            venta.vendedor.usuario.username, # Ajusta según cómo obtienes el nombre del usuario
-            venta.fecha.strftime('%Y-%m-%d %H:%M:%S'), 
-            venta.total
-        ])
-    
+        for d in venta.detalles.all():
+            writer.writerow([
+                venta.id,
+                venta.vendedor.usuario.username,
+                venta.fecha.strftime('%Y-%m-%d'),            # formato universal
+                venta.fecha.strftime('%H:%M:%S'),
+                venta.fecha.year,
+                venta.fecha.month,
+                venta.fecha.strftime('%A').capitalize(),    # Día capitalizado
+                d.producto.nombre,
+                d.cantidad,
+                d.precio_unitario,
+                d.subtotal()
+            ])
+
     return response
