@@ -1,5 +1,5 @@
 """
-Django settings for proyectoAnitaSol project.
+Django settings for trigorojo project.
 Generado por 'django-admin startproject' usando Django 3.2.
 """
 
@@ -59,8 +59,8 @@ MIDDLEWARE = [
 # ============================================================
 # 🌐 URLS / WSGI
 # ============================================================
-ROOT_URLCONF = 'proyectoAnitaSol.urls'
-WSGI_APPLICATION = 'proyectoAnitaSol.wsgi.application'
+ROOT_URLCONF = 'trigorojo.urls'
+WSGI_APPLICATION = 'trigorojo.wsgi.application'
 LOGIN_URL = '/login/'
 
 # ============================================================
