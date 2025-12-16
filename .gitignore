@@ -18,3 +18,16 @@ Thumbs.db
 
 # 4. Archivos de compilación de Django/Python
 # (Los archivos que terminan en .pyc o que ves en la carpeta __pycache__)
+__pycache__/
+*.pyc
+
+# Archivos de migraciones (se regeneran con makemigrations/migrate)
+*/migrations/__pycache__/
+*/migrations/*.pyc
+
+# Archivos de coverage o pruebas
+.coverage
+htmlcov/
+
+# Archivos de compilación de dependencias
+*.egg-info/
